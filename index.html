@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>Wikipedia Viewer</title>
+  
+  
+  <link rel='stylesheet prefetch' href='https://fonts.googleapis.com/css?family=Corben:700'>
+<link rel='stylesheet prefetch' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css'>
+
+      <link rel="stylesheet" href="css/style.css">
+
+  
+</head>
+
+<body>
+  <div class="chide-style" id="small_logo_id">
+			<div class="row small-logo-style">WIKIPEDIA VIEWER </div>
+			<div class="row" style="margin-top: 4px;">
+				<input type="text" id="input_small_id" name="input_name" class="input-type-style "> &nbsp;&nbsp;
+				<button id="searchButtonIdSmall">Search</button>
+			</div>
+			<div class="row"><a href="http://en.wikipedia.org/wiki/Special:Random" target="_blank"> Click here for a random article</a></div>
+	</div>
+	<div class="col-xs-12 text-center main-div-container" id="big_logo_id">
+		<div class="row logo-style">
+			WIKIPEDIA VIEWER
+		</div>
+		<div class="row">
+			<input type="text" id="input_big_id" name="input_name" class="input-type-style" 
+                placeholder="Search on Wikipedia">&nbsp;&nbsp;<button id="searchButtonIdBig">Search</button>
+		</div>
+		<div class="row">
+			<a href="http://en.wikipedia.org/wiki/Special:Random" target="_blank"> Click here for a random article</a>
+		</div>
+	</div>
+	<div class="col-xs-12" id="search-result-div">
+
+	</div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+	<script type="text/javascript">
+		
+		$(document).ready(function(){
+
+			loadedPageCall();
+			var wikiViewerDataArr = [];
+			var WikiViewerData = function(pageId, title, extract, thumbnailObj){
+				this.pageId = pageId;
+				this.title = title;
+				this.extract = extract;
+				this.thumnailObj = thumbnailObj;
+			};
+    		function parseResponse(serverResponseObj) {
+				wikiViewerDataArr = [];
+				if(serverResponseObj) {
+					
+					var listPages = serverResponseObj.query.pages;
+					var eachPage;
+					for (eachPage in listPages) {
+						//listPages[eachPage]
+						var eachWikiDataObj = new WikiViewerData(listPages[eachPage]['pageid'], listPages[eachPage]['title'], listPages[eachPage]['extract'], listPages[eachPage]['thumbnail']);
+						wikiViewerDataArr.push(eachWikiDataObj);
+					}	
+				}
+		    };
+		    function prepareForNewSearch()
+		    {
+		    	wikiViewerDataArr = [];
+		    	var contentDiv = document.getElementById("search-result-div");
+				contentDiv.innerHTML = "";
+
+		    };
+			function changeToSearchMode(valToSearch)
+			{
+				var smallLogoObj = document.getElementById("small_logo_id");
+				smallLogoObj.className = "col-xs-12 small-search-container"; 
+				document.getElementById("big_logo_id").className = "hide-style";
+				document.getElementById("input_small_id").value = valToSearch;
+			};
+			function showSearchArray()
+			{
+				var searchResultSize = wikiViewerDataArr.length;
+
+				var wikiURL = 'http://en.wikipedia.org/?curid=';
+				var searchSrc = "<ul>";
+				var eachSearchObj = null;
+				var eachSearchListSrc = null;
+				var thumbnailImgSrc = null;
+
+				for (var searchIndex = 0; searchIndex < searchResultSize; searchIndex++) {
+					eachSearchObj = wikiViewerDataArr[searchIndex];
+					thumbnailImgSrc = "";
+					if(eachSearchObj.thumnailObj) {
+						thumbnailImgSrc = " <img src='" + eachSearchObj.thumnailObj.source + "' />";
+					}
+					eachSearchListSrc = "<li> " +
+											" <a href='" + (wikiURL + eachSearchObj.pageId) + "' target='_blank'>" +
+												 thumbnailImgSrc + 
+												"<h3>" + eachSearchObj.title + "</h3>" +
+												"<p>" + eachSearchObj.extract + "</p>" +
+											"</a> " +
+										"</li>";
+
+					searchSrc += eachSearchListSrc;
+				}
+				searchSrc += "</ul>"
+				var contentDiv = document.getElementById("search-result-div");
+				contentDiv.innerHTML = searchSrc;
+			}
+			
+			$("#input_big_id").keyup(function(event){
+			    if(event.keyCode == 13){
+			        $("#searchButtonIdBig").click();
+			    }
+			});
+
+			$("#input_small_id").keyup(function(event){
+			    if(event.keyCode == 13){
+			        $("#searchButtonIdSmall").click();
+			    }
+			});
+
+			$('button').click(function(eventObj) {
+				eventObj.preventDefault();
+				console.log("button is clicked...");
+				var searchString = $('#input_big_id').val();
+
+				if($("#input_big_id").is(":hidden")) {
+					searchString = $('#input_small_id').val(); 
+
+				}
+				console.log("Searching value is " + searchString);
+
+				var urlString = "https://en.wikipedia.org/w/api.php?format=json&action=query&generator=search&gsrnamespace=0&gsrlimit=15&prop=pageimages|extracts&pilimit=max&exintro&explaintext&exsentences=1&exlimit=max&gsrsearch=" + searchString + "&callback=?";
+				var ajaxSettingObj = {dataType : "json", type: "GET", 
+      crossDomain: true,
+      xhrFields: {
+          'withCredentials': true
+        },
+    origin: 'https://www.codepen.io',
+      headers:{"Access-Control-Allow-Origin":"*"},
+							success: function( data ) {
+						        console.log(">>> got the data " + data);
+						        changeToSearchMode(searchString);
+						        parseResponse(data);
+						        showSearchArray();
+						    },
+						 
+						    // Code to run if the request fails; the raw request and
+						    // status codes are passed to the function
+						    error: function( xhr, status, errorThrown ) {
+						        
+						        console.log( "Error: " + errorThrown );
+						        console.log( "Status: " + status );
+						        console.log( xhr );
+						    },
+						 
+						    // Code to run regardless of success or failure
+						    complete: function( xhr, status ) {
+						        console.log( "The request is complete!" );
+						    }
+				 };
+
+				 $.ajax(urlString, ajaxSettingObj);
+
+			});
+
+		});
+	</script>
+  <script src='http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>
+
+    <script src="js/index.js"></script>
+
+</body>
+</html>
